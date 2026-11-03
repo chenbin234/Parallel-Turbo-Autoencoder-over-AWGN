@@ -1,1 +1,2 @@
-# Parallel-Turbo-Autoencoder-over-AWGN
+# 
+This is the souce code for the paper "TurboAE"
