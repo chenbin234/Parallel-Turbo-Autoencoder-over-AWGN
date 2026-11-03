@@ -1,16 +1,14 @@
 """
-This file is to constract the CNN module for the model Turbo AutoEncoder
+This file is to construct the CNN module for the model Turbo AutoEncoder
 """
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class SameShapeConv1d(nn.Module):
-    def __init__(
-        self, in_channels, out_channels, kernel_size, num_layers, stride, padding, bias
-    ):
-        super(SameShapeConv1d, self).__init__()
+    def __init__(self, in_channels, out_channels, kernel_size, num_layers, stride, padding, bias):
+        super().__init__()
 
         layers = []
         for _ in range(num_layers):
