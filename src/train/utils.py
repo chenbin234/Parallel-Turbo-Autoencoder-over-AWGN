@@ -39,9 +39,6 @@ def get_git_metadata() -> tuple[str, str]:
 class _LossConfig(Protocol):
     """Configuration values required by the loss factories."""
 
-    sync_loss_function: str
-    huber_delta: float
-    smooth_l1_beta: float
     alpha: float
     beta: float
     loss_function: str
@@ -126,37 +123,6 @@ def broadcast_seed(base_seed: int | None = None) -> int:
     torch.distributed.broadcast(seed_tensor, src=0)
     print(f"rank {rank} seed_tensor after broadcast: {seed_tensor}")
     return int(seed_tensor.item())
-
-
-class CustomLoss(nn.Module):
-    """Combine binary and categorical cross-entropy objectives."""
-
-    def __init__(self, alpha: float = 0.01) -> None:
-        super().__init__()
-        self.alpha = alpha
-        self.bce_loss = nn.BCELoss()
-        self.cce_loss = nn.CrossEntropyLoss()
-
-    def forward(
-        self,
-        bce_prediction: torch.Tensor,
-        bce_target: torch.Tensor,
-        cce_prediction: torch.Tensor,
-        cce_target: torch.Tensor,
-    ) -> torch.Tensor:
-        """
-        Compute the weighted sum of the BCE and CCE terms.
-
-        Returns:
-            A scalar loss tensor.
-
-        """
-        bce = self.bce_loss(bce_prediction, bce_target)
-        cce = self.cce_loss(
-            cce_prediction.to(torch.float32),
-            cce_target.to(torch.float32),
-        )
-        return bce + self.alpha * cce
 
 
 def probabilities_to_logits(probabilities: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
@@ -429,36 +395,6 @@ class HybridBCEPNormLoss(nn.Module):
             probabilities,
             targets,
         )
-
-
-def build_sync_loss_fn(config: object) -> nn.Module:
-    """
-    Build the configured synchronization-loss module.
-
-    Returns:
-        The selected synchronization-loss module.
-
-    Raises:
-        ValueError: If the configured loss name is unsupported.
-
-    """
-    loss_config = cast("_LossConfig", config)
-    configured_loss = loss_config.sync_loss_function
-    loss_name = str(configured_loss).strip().lower().replace(" ", "_")
-
-    if loss_name in {"mse", "mse_loss", "mseloss"}:
-        return nn.MSELoss()
-    if loss_name in {"mae", "mae_loss", "maeloss", "l1", "l1_loss"}:
-        return nn.L1Loss()
-    if loss_name in {"huber", "huber_loss", "huberloss"}:
-        return nn.HuberLoss(delta=loss_config.huber_delta)
-    if loss_name in {"smooth_l1", "smooth_l1_loss", "smoothl1"}:
-        return nn.SmoothL1Loss(beta=loss_config.smooth_l1_beta)
-
-    supported = "MSE, MAE, Huber, smooth_l1"
-    raise ValueError(
-        f"Invalid synchronization loss {configured_loss!r}; expected one of: {supported}."
-    )
 
 
 def build_loss_fn(config: object) -> nn.Module:

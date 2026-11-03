@@ -4,14 +4,11 @@ Paper: Turbo Autoencoder: Deep learning based channel codes for point-to-point c
 URL: http://arxiv.org/abs/1911.03038
 """
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 from numpy import arange
 from numpy.random import mtrand
 from torch import nn
 
-# from models.components.interleavers import Interleaver, DeInterleaver
 from src.channel.AWGN_Channel import AWGN_Channel_new
 from src.models.components.SameShapeConv1d import SameShapeConv1d
 
@@ -24,38 +21,6 @@ def generate_permutation_array(k, seed=0):
     p_array = torch.LongTensor(p_array).view(len(p_array))
 
     return p_array
-
-
-# class Interleaver(nn.Module):
-#     def __init__(self, p_array):
-#         super(Interleaver, self).__init__()
-#         self.p_array = torch.LongTensor(p_array).view(len(p_array))
-
-#     def forward(self, inputs):
-
-#         inputs = inputs.permute(1, 0, 2)
-#         res = inputs[self.p_array]
-#         res = res.permute(1, 0, 2)
-
-#         return res
-
-
-# class DeInterleaver(nn.Module):
-#     def __init__(self, p_array):
-#         super(DeInterleaver, self).__init__()
-
-#         self.reverse_p_array = [0 for _ in range(len(p_array))]
-#         for idx in range(len(p_array)):
-#             self.reverse_p_array[p_array[idx]] = idx
-
-#         self.reverse_p_array = torch.LongTensor(self.reverse_p_array).view(len(p_array))
-
-#     def forward(self, inputs):
-#         inputs = inputs.permute(1, 0, 2)
-#         res = inputs[self.reverse_p_array]
-#         res = res.permute(1, 0, 2)
-
-#         return res
 
 
 class Encoder(nn.Module):
@@ -104,7 +69,6 @@ class Encoder(nn.Module):
 
         rand_gen = mtrand.RandomState(seed=self.p_array_seed)
         p_array = rand_gen.permutation(arange(k))
-        # print(p_array)
 
         # convert p_array from numpy array to torch tensor
         self.p_array = torch.as_tensor(p_array, dtype=torch.long, device=inputs.device).view(len(p_array))
@@ -256,54 +220,6 @@ class Decoder(nn.Module):
         batch_size = received.shape[0]
         block_length = received.shape[1]
         p_array = generate_permutation_array(block_length, seed=self.p_array_seed).to(received.device)
-
-        # r_sys = received[:, :, 0].unsqueeze(2)
-        # r_sys_interleaved = self.interleaver(r_sys, p_array)
-        # r_p1 = received[:, :, 1].unsqueeze(2)
-        # r_p2 = received[:, :, 2].unsqueeze(2)
-
-        # prior = torch.zeros(batch_size, block_length, self.num_iter_ft).to(self.device)
-
-        # for i in range(self.num_iteration - 1):
-
-        #     # Decoder 1
-        #     dec1_input = torch.cat([r_sys, r_p1, prior], dim=2)
-        #     dec1_output = self.dec1_cnns[i](dec1_input)
-        #     dec1_output = self.dec1_outputs[i](dec1_output)
-
-        #     dec1_output = dec1_output - prior
-
-        #     dec1_output_interleaved = self.interleaver(dec1_output, p_array)
-
-        #     # Decoder 2
-        #     dec2_input = torch.cat(
-        #         [r_sys_interleaved, r_p2, dec1_output_interleaved], dim=2
-        #     )
-        #     dec2_output = self.dec2_cnns[i](dec2_input)
-        #     dec2_output = self.dec2_outputs[i](dec2_output)
-
-        #     dec2_output = dec2_output - dec1_output_interleaved
-
-        #     # Update prior
-        #     prior = self.deinterleaver(dec2_output, p_array)
-
-        # # Final iteration
-        # dec1_input = torch.cat([r_sys, r_p1, prior], dim=2)
-        # dec1_output = self.dec1_cnns[self.num_iteration - 1](dec1_input)
-        # dec1_output = self.dec1_outputs[self.num_iteration - 1](dec1_output)
-
-        # dec1_output = dec1_output - prior
-
-        # dec1_output_interleaved = self.interleaver(dec1_output, p_array)
-
-        # dec2_input = torch.cat(
-        #     [r_sys_interleaved, r_p2, dec1_output_interleaved], dim=2
-        # )
-        # dec2_output = self.dec2_cnns[self.num_iteration - 1](dec2_input)
-        # dec2_output = self.dec2_outputs[self.num_iteration - 1](dec2_output)
-
-        # # Final output, of shape (batch_size, k, 1)
-        # final = torch.sigmoid(self.interleaver(dec2_output, p_array))
 
         # Turbo Decoder
         r_sys = received[:, :, 0].view((batch_size, block_length, 1))
